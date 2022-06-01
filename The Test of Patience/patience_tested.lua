@@ -32,7 +32,7 @@ while true do
     -- Process a barrel that is placed in front of the turtle.
     for slot, item_info in pairs(barrel_items) do
 
-        print("Begin processing barrel " .. barrels_opened + 1 .. " in front of turtle.")
+        print("Begin new barrel.")
 
         local item_name = item_info.name
 
