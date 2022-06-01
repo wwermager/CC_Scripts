@@ -1,99 +1,77 @@
-
 -- Using Inventory peripheral allows us to access additonal storage easily without needing to turn the turtle which saves time
-front = peripheral.wrap("front")
-back = peripheral.wrap("back")
-left = peripheral.wrap("left")
-right = peripheral.wrap("right")
-up = peripheral.wrap("top")
-down = peripheral.wrap("bottom")
+assert(peripheral.isPresent("front"), "Puzzle barrel needs to be placed in front of turtle.")
+local front = peripheral.wrap("front")
+
+local hasBack, hasLeft, hasRight, hasUp, hasDown = false, false, false, false, false
+
+local back = peripheral.wrap("back")
+if not (back == nil) then hasBack = true end
+
+local left = peripheral.wrap("left")
+if not (left == nil) then hasLeft = true end
+
+local right = peripheral.wrap("right")
+if not (right == nil) then hasRight = true end
+
+local up = peripheral.wrap("top")
+if not (up == nil) then hasUp = true end
+
+local down = peripheral.wrap("bottom")
+if not (down == nil) then hasDown = true end
+
+assert(hasBack or hasLeft or hasRight or hasUp or hasDown, "At least one storage item (i.e. chest, drawer, barrel, etc.) must be placed directly to the left, right, back, top or bottom of the turtle.")
+
+local barrels_opened = 0
 
 while true do
-
-    turtle.select(1)
 
     local barrel_items = front.list()
     local total_item_count = 0
     local deposited_count = 0
 
+    -- Process a barrel that is placed in front of the turtle.
     for slot, item_info in pairs(barrel_items) do
 
-        local item_name = item_info.name()
-        
-        if not (item_name == "minecraft:barrel") then
+        print("Begin processing barrel " .. barrels_opened + 1 .. " in front of turtle.")
+
+        local item_name = item_info.name
+
+        -- The puzzel box (barrel) contains nbt data, while standard MC barrels do not
+        -- Leave puzzle box in current barrel and remove only after removing all other items
+        if not (item_name == "minecraft:barrel" and front.getItemDetail(slot).nbt) then
 
             total_item_count = total_item_count + item_info.count
             -- pushItems(String toName, Number fromSlot) returns count of deposited items
-            deposited_count = deposited_count + front.pushItems(peripheral.getName(up),slot)
-            deposited_count = deposited_count + front.pushItems(peripheral.getName(down),slot)
-            deposited_count = deposited_count + front.pushItems(peripheral.getName(left),slot)
-            deposited_count = deposited_count + front.pushItems(peripheral.getName(right),slot)
-            deposited_count = deposited_count + front.pushItems(peripheral.getName(back),slot)
+            if hasUp then
+                deposited_count = deposited_count + front.pushItems(peripheral.getName(up),slot)
+            end
+            if hasRight then
+                deposited_count = deposited_count + front.pushItems(peripheral.getName(right),slot)
+            end
+            if hasDown then
+                deposited_count = deposited_count + front.pushItems(peripheral.getName(down),slot)
+            end
+            if hasLeft then
+                deposited_count = deposited_count + front.pushItems(peripheral.getName(left),slot)
+            end
+            if hasBack then
+                deposited_count = deposited_count + front.pushItems(peripheral.getName(back),slot)
+            end
         
         end
 
     end
 
-    assert(total_item_count == deposited_count, "All chests full.")
-    
-    -- Only a single barrel should remainin the inventory, get it and break the placed barrel
-    assert(turtle.suck(), "Unable to suck front.")
-    assert(turtle.dig(), "Unable to dig front.")
+    assert(total_item_count == deposited_count, "Unable to deposit items into attached storage.")
+    barrels_opened = barrels_opened + 1
+    print("Processed barrel " .. barrels_opened .. ".")
+    -- Only a single barrel remainins in the inventory, get it and break (dig) the placed barrel
+    turtle.select(1)
+    assert(turtle.suck(), "Unable to pull a new barrel from front. Perhaps the end was reached?")
+
+    assert(turtle.dig(), "Unable to break barrel in front.")
     assert(turtle.place(), "Unable to place new barrel.")
+    turtle.select(2)
+    assert(turtle.drop(),"Unable to drop old barrel in new barrel.")
     
 end
-
-
-
---     local hasContents = turtle.suck()
---     -- Assuming final barrel does not have a barrel use this to end application
---     local hasBarrel = false
---     print("Begin processing barrel contents...")
---     while hasContents do
-
---         local item_name = turtle.getItemDetail().name
---         local dropped = false
-
---         -- API limits us to drop, dropUp, and dropDown methods
---         -- Avoiding turning to use other storage as this increases the time spent processing barrels
---         -- Choosing to store misc. items like apples, cookies, etc. with barrels as these stack more efficiently than messages (paper)
-
---         if not (item_name == "minecraft:paper"  or item_name == "minecraft:barrel") then
---             -- print("Found " .. item_name .. ", dropping to upper inventory...")
---             dropped = turtle.dropUp()
---             if not (dropped) then
---                 error("UP INVENTORY FULL")
---             end
---         -- paper goes down
---         elseif (item_name == "minecraft:paper") then
---             -- print("Found paper " .. ", dropping to lower inventory...")
---             dropped = turtle.dropDown()
---             if not (dropped) then
---                 error("DOWN INVENTORY FULL")
---             end
---         -- mystery barrel
---         else
---             -- move mystery barrel to inventory slot 2
---             -- print("Found the mystery barrel, moving to slot 2...")
---             turtle.transferTo(2)
---             hasBarrel = true
---         end
-
---         hasContents = turtle.suck()
-
---     end
-
---     if not (hasBarrel) then
---         error("NO NESTED BARREL... WINNER???")
---     end
-
---     -- break current barrel and store
---     turtle.dig()
---     dropped = turtle.dropUp()
---     if not (dropped) then
---         error("UP INVENTORY FULL")
---     end
-
---     turtle.select(2)
---     turtle.place()
-
--- end
