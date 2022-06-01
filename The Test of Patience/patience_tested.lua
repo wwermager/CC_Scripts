@@ -30,9 +30,8 @@ while true do
     local deposited_count = 0
 
     -- Process a barrel that is placed in front of the turtle.
+    print("Begin new barrel.")
     for slot, item_info in pairs(barrel_items) do
-
-        print("Begin new barrel.")
 
         local item_name = item_info.name
 
