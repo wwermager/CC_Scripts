@@ -23,21 +23,24 @@ assert(hasBack or hasLeft or hasRight or hasUp or hasDown, "At least one storage
 
 local barrels_opened = 0
 
+local PUZZLE_NAME = "Test of Patience"
+
 while true do
 
     local barrel_items = front.list()
     local total_item_count = 0
     local deposited_count = 0
 
-    -- Process a barrel that is placed in front of the turtle.
-    print("Begin new barrel.")
     for slot, item_info in pairs(barrel_items) do
 
         local item_name = item_info.name
 
-        -- The puzzel box (barrel) contains nbt data, while standard MC barrels do not
-        -- Leave puzzle box in current barrel and remove only after removing all other items
-        if not (item_name == "minecraft:barrel" and front.getItemDetail(slot).nbt) then
+        -- The mystery box (barrel) contains nbt data, while standard MC barrels do not
+        -- Leave new mystery box in current barrel and remove only after removing all other items
+        -- Additionally, check for the original mystery barrel name as it retains its nbt data after placing/breaking
+        --  unlike its nested counterparts
+        if not (item_name == "minecraft:barrel" and front.getItemDetail(slot).nbt) 
+            or front.getItemDetail(slot).displayName == PUZZLE_NAME then
 
             total_item_count = total_item_count + item_info.count
             -- pushItems(String toName, Number fromSlot) returns count of deposited items
