@@ -9,7 +9,7 @@ Create: Above and Beyond Modpack has a barrel that can be purchased in the marke
 3. Attach external storage. Place chests, barrels, storage drawers or some other storage directly on the other sides of the turtle: left, right, bottom, and top.
 4. Get the program. 
     1. Copy and paste the code from the `patience_tested.lua` to pastebin.com and create a new paste.
-    2. You should be rerouted to a URL like https://pastebin.com/**s9tFtH6L**. Make note of the random string after the last `/`.
+    2. You should be rerouted to a URL like htt<span>ps://</span>pastebin.com/**s9tFtH6L**. Make note of the random string after the last `/`.
     3. Right click on your turtle and execute the following `patebin get *yourUniqueString* patience_tested`
 5. Run the program. On the turtle execute the following `patience_tested`
 
