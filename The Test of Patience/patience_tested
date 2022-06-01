@@ -1,8 +1,31 @@
--- Using Inventory peripheral allows us to access additonal storage easily without needing to turn the turtle which saves time
-assert(peripheral.isPresent("front"), "Puzzle barrel needs to be placed in front of turtle.")
-local front = peripheral.wrap("front")
+local function place_new()
+    turtle.select(1)
+    assert(turtle.place(), "Unable to place new barrel.")
+    turtle.select(2)
+    assert(turtle.drop(),"Unable to drop old barrel in new barrel.")
+end
 
 local hasBack, hasLeft, hasRight, hasUp, hasDown = false, false, false, false, false
+
+-- Last exit before breaking barrel but after pulling mystery barrel
+if peripheral.isPresent("front") and turtle.getItemDetail(1) then
+
+    print("Resuming operation: barrel already processed, deploying a new one.")
+    assert(turtle.dig(), "Unable to break barrel in front.") -- barrel dug will end up in second slot
+    place_new()
+
+-- Last exited after breaking barrel but before placing the new one
+elseif not peripheral.isPresent("front") and turtle.getItemDetail(1) then
+    
+    print("Resuming operation: deploying a new barrel.")
+    place_new()
+
+else
+    print("Resuming operation: existing barrel has inventory to be processed.")
+end
+
+
+local front = peripheral.wrap("front")
 
 local back = peripheral.wrap("back")
 if not (back == nil) then hasBack = true end
@@ -70,10 +93,7 @@ while true do
     -- Only a single barrel remainins in the inventory, get it and break (dig) the placed barrel
     turtle.select(1)
     assert(turtle.suck(), "Unable to pull a new barrel from front. Perhaps the end was reached?")
-
     assert(turtle.dig(), "Unable to break barrel in front.")
-    assert(turtle.place(), "Unable to place new barrel.")
-    turtle.select(2)
-    assert(turtle.drop(),"Unable to drop old barrel in new barrel.")
+    place_new()
     
 end
