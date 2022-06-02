@@ -1,16 +1,40 @@
+local front = peripheral.wrap("front")
+local left = peripheral.wrap("left")
+local left_name = peripheral.getName(left)
+local right = peripheral.wrap("right")
+local right_name = peripheral.getName(right)
+local up = peripheral.wrap("top")
+local down = peripheral.wrap("bottom")
+local down_name = peripheral.getName(down)
+local barrels_opened = 0
+
+local PUZZLE_NAME = "Test of Patience"
+local BARREL_DISPLAY_NAME = "Barrel"
+local PAPER = "minecraft:paper"
+local PUFFER_FISH = "minecraft:pufferfish"
+local APPLE = "minecraft:apple"
+local COOKIE = "minecraft:cookie"
+local BARREL = "minecraft:barrel"
+local PROCESS_START = os.clock()
+
 turtle.select(1)
 
 local function benchmark(start_time)
     return os.clock() - start_time
-    -- print(string.format("elapsed time: %.2fs\tbarrels opened: %d\tbarrels/sec: %.2fbps\n", elapsed_time, barrels_opened, barrels_opened/elapsed_time)) 
 end
 local function place_new()
 
     assert(turtle.place(), "Unable to place new barrel.")
+
     if turtle.getItemSpace(2) == 0 then
-        print("clean slot 2")
         turtle.select(2)
-        assert(turtle.drop(),"Unable to drop old barrel in new barrel.")
+        assert(turtle.dropUp(),"Unable to clear turtle inventory.")
+        turtle.select(1)
+    -- clean up original "Test of Patience Barrel", can't dropUp because of unique displayName and nbt data prevents stacking
+    -- we can have main processing loop move this to our miscellaneous chest on the right
+    elseif turtle.getItemDetail(2, true).displayName == PUZZLE_NAME then
+        turtle.select(2)
+        assert(turtle.drop(),"Unable to put \"Test of Patience\" barrel in new barrel.")
         turtle.select(1)
     end
 end
@@ -21,7 +45,7 @@ end
 if peripheral.isPresent("front") and turtle.getItemDetail(1) then
 
     print("Resuming operation: barrel already processed, deploying a new one.")
-    assert(turtle.dig(), "Unable to break barrel in front.") -- barrel dug will end up in second slot
+    assert(turtle.dig(), "Unable to break barrel in front.")
     place_new()
 
 -- Last exited after breaking barrel but before placing the new one
@@ -34,82 +58,51 @@ else
     print("Resuming operation: existing barrel has inventory to be processed.")
 end
 
-local hasBack, hasLeft, hasRight, hasUp, hasDown = false, false, false, false, false
-local front = peripheral.wrap("front")
-assert(front)
+assert(left and right and up and down, "At least one storage item (i.e. chest, drawer, barrel, etc.) must be placed directly to the left, right, back, top or bottom of the turtle.")
 
-local left = peripheral.wrap("left")
-if not (left == nil) then hasLeft = true end
 
-local right = peripheral.wrap("right")
-if not (right == nil) then hasRight = true end
-
-local down = peripheral.wrap("bottom")
-if not (down == nil) then hasDown = true end
-
-assert(hasBack or hasLeft or hasRight or hasUp or hasDown, "At least one storage item (i.e. chest, drawer, barrel, etc.) must be placed directly to the left, right, back, top or bottom of the turtle.")
-
-local barrels_opened = 0
-local PUZZLE_NAME = "Test of Patience"
-local PROCESS_START = os.clock()
 
 while true do
 
+    local start_time = os.clock()
+    -- turtle was occasionally failing making the call to .list(), adding small delay fixed this
+    sleep(.05)
     local barrel_items = front.list()
     local total_item_count = 0
-    local deposited_count = 0
-
-    local start_time = os.clock()
+    local withdrawn_count = 0
     
     for slot, item_info in pairs(barrel_items) do
 
         local item_name = item_info.name
+        total_item_count = total_item_count + item_info.count
 
-        -- The mystery box (barrel) contains nbt data, while standard MC barrels do not
-        -- Leave new mystery box in current barrel and remove only after removing all other items
-        -- Additionally, check for the original mystery barrel name as it retains its nbt data after placing/breaking
-        --  unlike its nested counterparts
-        if not (item_name == "minecraft:barrel" and front.getItemDetail(slot).nbt) 
-            or front.getItemDetail(slot).displayName == PUZZLE_NAME then
+        if item_name == PAPER then
+            withdrawn_count = withdrawn_count + front.pushItems(peripheral.getName(down),slot)
 
-            total_item_count = total_item_count + item_info.count
-            -- pushItems(String toName, Number fromSlot) returns count of deposited items
-            
-            if hasUp then
-                deposited_count = deposited_count + front.pushItems(peripheral.getName(up),slot)
-            end
-            if hasRight then
-                deposited_count = deposited_count + front.pushItems(peripheral.getName(right),slot)
-            end
-            if hasDown then
-                deposited_count = deposited_count + front.pushItems(peripheral.getName(down),slot)
-            end
-            if hasLeft then
-                deposited_count = deposited_count + front.pushItems(peripheral.getName(left),slot)
-            end
-            if hasBack then
-                deposited_count = deposited_count + front.pushItems(peripheral.getName(back),slot)
-            end
-        
+        elseif (item_name == APPLE or item_name == COOKIE or item_name == PUFFER_FISH) then
+            withdrawn_count = withdrawn_count + front.pushItems(peripheral.getName(left),slot)
+
+        -- found something other than the next barrel to open
+        elseif not (front.getItemDetail(slot,true).displayName == BARREL_DISPLAY_NAME) then
+            withdrawn_count = withdrawn_count + front.pushItems(peripheral.getName(right),slot)
         end
-    
+
     end
-    print(string.format("processing of barrel took %.2f seconds\n",benchmark(start_time)))
-
-    assert(total_item_count == deposited_count, "Unable to deposit items into attached storage.")
-    barrels_opened = barrels_opened + 1
-    -- print("Processed barrel " .. barrels_opened .. ".") 
-
-    -- Only a single barrel remainins in the inventory, get it and break (dig) the placed barrel
-    turtle.select(1)
-    -- assert(turtle.suck(), "Unable to pull a new barrel from front. Perhaps the end was reached?")
+    -- A nested barrel wasn't found, so fail
     if not turtle.suck() then
-        print(string.format("elapsed time: %.2fs\tbarrels opened: %d\n", benchmark(PROCESS_START), barrels_opened)) 
-        error("Unable to pull a new barrel from front. Perhaps the end was reached?")
+        print(string.format("total elapsed time: %.2fs\tbarrels opened: %d\n", benchmark(PROCESS_START), barrels_opened)) 
+        error("No new barrel. Perhaps the end was reached?")
     end
-    assert(turtle.dig(), "Unable to break barrel in front.")
 
-    start_time = os.clock()
+    withdrawn_count = withdrawn_count + 1
+    assert(total_item_count == withdrawn_count, "Unable to deposit items into attached storage.")
+    barrels_opened = barrels_opened + 1
+    assert(turtle.dig(), "Unable to break barrel in front.")
     place_new()
-    print(string.format("place_new() took %.2f seconds\n",benchmark(start_time)))
+
+    if math.fmod(barrels_opened,10) == 0 then
+        local elapsed_time = benchmark(PROCESS_START)
+        print(string.format("elapsed time: %.2fs\tbarrels opened: %d\tbarrels/sec: %.2fbps\n",
+         elapsed_time, barrels_opened, barrels_opened/elapsed_time))
+    end
 end
