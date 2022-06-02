@@ -1,6 +1,11 @@
+local function benchmark(start_time)
+    return elapsed_time = os.clock() - start_time
+    -- print(string.format("elapsed time: %.2fs\tbarrels opened: %d\tbarrels/sec: %.2fbps\n", elapsed_time, barrels_opened, barrels_opened/elapsed_time)) 
+end
 local function place_new()
     turtle.select(1)
     assert(turtle.place(), "Unable to place new barrel.")
+    -- TODO optimize; Instead of moving barrel to storage every iteration, move only if 
     turtle.select(2)
     assert(turtle.drop(),"Unable to drop old barrel in new barrel.")
 end
@@ -45,8 +50,8 @@ if not (down == nil) then hasDown = true end
 assert(hasBack or hasLeft or hasRight or hasUp or hasDown, "At least one storage item (i.e. chest, drawer, barrel, etc.) must be placed directly to the left, right, back, top or bottom of the turtle.")
 
 local barrels_opened = 0
-
 local PUZZLE_NAME = "Test of Patience"
+local PROCESS_START = os.clock()
 
 while true do
 
@@ -54,6 +59,7 @@ while true do
     local total_item_count = 0
     local deposited_count = 0
 
+    local start_time = os.clock()
     for slot, item_info in pairs(barrel_items) do
 
         local item_name = item_info.name
@@ -67,6 +73,7 @@ while true do
 
             total_item_count = total_item_count + item_info.count
             -- pushItems(String toName, Number fromSlot) returns count of deposited items
+            
             if hasUp then
                 deposited_count = deposited_count + front.pushItems(peripheral.getName(up),slot)
             end
@@ -84,16 +91,24 @@ while true do
             end
         
         end
-
+    
     end
+    print(string.format("processing of barrel took %.2f seconds\n",benchmark(start_time)))
 
     assert(total_item_count == deposited_count, "Unable to deposit items into attached storage.")
     barrels_opened = barrels_opened + 1
-    print("Processed barrel " .. barrels_opened .. ".")
+    -- print("Processed barrel " .. barrels_opened .. ".") 
+
     -- Only a single barrel remainins in the inventory, get it and break (dig) the placed barrel
     turtle.select(1)
-    assert(turtle.suck(), "Unable to pull a new barrel from front. Perhaps the end was reached?")
+    -- assert(turtle.suck(), "Unable to pull a new barrel from front. Perhaps the end was reached?")
+    if not turtle.suck() then
+        print(string.format("elapsed time: %.2fs\tbarrels opened: %d\n", benchmark(PROCESS_START), barrels_opened)) 
+        error("Unable to pull a new barrel from front. Perhaps the end was reached?")
+    end
     assert(turtle.dig(), "Unable to break barrel in front.")
+
+    start_time = os.clock()
     place_new()
-    
+    print(string.format("place_new() took %.2f seconds\n",benchmark(start_time)))
 end
